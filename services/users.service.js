@@ -14,7 +14,8 @@ module.exports = {
       if (existing) throw new Error("User already exists");
 
       const hashed = await bcrypt.hash(password, 10);
-      const user = await this.adapter.insert({ email, password: hashed });
+      const role = ctx.params.role || "user"; // default role = "user"
+      const user = await this.adapter.insert({ email, password: hashed, role });
 
       return { _id: user._id, email: user.email };
     },
@@ -27,9 +28,9 @@ module.exports = {
         throw new Error("Invalid email or password");
       }
 
-      const token = jwt.sign({ _id: user._id, email }, SECRET, { expiresIn: "1d" });
+      const token = jwt.sign({ _id: user._id, email, role: user.role }, SECRET, { expiresIn: "1d" });
 
-      return { token, user: { _id: user._id, email } };
+      return { token, user: { _id: user._id, email, role: user.role } };
     },
 
     resolveToken(ctx) {
