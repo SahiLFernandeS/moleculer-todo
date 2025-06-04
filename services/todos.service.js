@@ -19,6 +19,7 @@ module.exports = {
   hooks: {
     before: {
       create(ctx) {
+        ctx.params.userId = ctx.meta.user._id; // Assuming user ID is set in the context
         ctx.params.createdAt = new Date();
         ctx.params.updatedAt = new Date();
         ctx.params.completed = false;
@@ -27,5 +28,21 @@ module.exports = {
         ctx.params.updatedAt = new Date();
       }
     }
-  }
+  },
+
+  actions: {
+    async list(ctx) {
+        return this.adapter.find({ query: { userId: ctx.meta.user._id } });
+    },
+    async get(ctx) {
+        const todo = await this.adapter.findById(ctx.params.id);
+        if (!todo || todo.userId !== ctx.meta.user._id) throw new Error("Unauthorized or Not Found");
+        return todo;
+    },
+    async remove(ctx) {
+        const todo = await this.adapter.findById(ctx.params.id);
+        if (!todo || todo.userId !== ctx.meta.user._id) throw new Error("Unauthorized or Not Found");
+        return this.adapter.removeById(ctx.params.id);
+    },
+    }
 };

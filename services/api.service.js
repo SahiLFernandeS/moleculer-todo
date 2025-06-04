@@ -40,16 +40,21 @@ module.exports = {
 				mergeParams: true,
 
 				// Enable authentication. Implement the logic into `authenticate` method. More info: https://moleculer.services/docs/0.14/moleculer-web.html#Authentication
-				authentication: false,
+				authentication: true,
 
 				// Enable authorization. Implement the logic into `authorize` method. More info: https://moleculer.services/docs/0.14/moleculer-web.html#Authorization
-				authorization: false,
+				authorization: true,
 
 				// The auto-alias feature allows you to declare your route alias directly in your services.
 				// The gateway will dynamically build the full routes from service schema.
 				autoAliases: true,
 
 				aliases: {
+					// Login & Register actions
+					"POST auth/register": "users.register",
+  					"POST auth/login": "users.login",
+
+					// todos actions
 					"GET todos": "todos.list",
 					"GET todos/:id": "todos.get",
 					"POST todos": "todos.create",
@@ -97,7 +102,7 @@ module.exports = {
 				},
 
 				// Mapping policy setting. More info: https://moleculer.services/docs/0.14/moleculer-web.html#Mapping-policy
-				mappingPolicy: "all", // Available values: "all", "restrict"
+				mappingPolicy: "restrict", // Available values: "all", "restrict"
 
 				// Enable/disable logging
 				logging: true
@@ -136,26 +141,35 @@ module.exports = {
 		 * @returns {Promise}
 		 */
 		async authenticate(ctx, route, req) {
-			// Read the token from header
-			const auth = req.headers["authorization"];
+			// // Read the token from header
+			// const auth = req.headers["authorization"];
 
-			if (auth && auth.startsWith("Bearer")) {
-				const token = auth.slice(7);
+			// if (auth && auth.startsWith("Bearer")) {
+			// 	const token = auth.slice(7);
 
-				// Check the token. Tip: call a service which verify the token. E.g. `accounts.resolveToken`
-				if (token == "123456") {
-					// Returns the resolved user. It will be set to the `ctx.meta.user`
-					return { id: 1, name: "John Doe" };
+			// 	// Check the token. Tip: call a service which verify the token. E.g. `accounts.resolveToken`
+			// 	if (token == "123456") {
+			// 		// Returns the resolved user. It will be set to the `ctx.meta.user`
+			// 		return { id: 1, name: "John Doe" };
 
-				} else {
-					// Invalid token
-					throw new ApiGateway.Errors.UnAuthorizedError(ApiGateway.Errors.ERR_INVALID_TOKEN);
+			// 	} else {
+			// 		// Invalid token
+			// 		throw new ApiGateway.Errors.UnAuthorizedError(ApiGateway.Errors.ERR_INVALID_TOKEN);
+			// 	}
+
+			// } else {
+			// 	// No token. Throw an error or do nothing if anonymous access is allowed.
+			// 	// throw new E.UnAuthorizedError(E.ERR_NO_TOKEN);
+			// 	return null;
+			// }
+			if (req.originalUrl.startsWith("/api/todos")) {
+				try {
+					const user = await this.broker.call("users.resolveToken", {}, { meta: { authorization: req.headers.authorization } });
+					ctx.meta.user = user;
+					return user;
+				} catch (err) {
+					throw new ApiGateway.Errors.UnAuthorizedError("Invalid Token", err.message);
 				}
-
-			} else {
-				// No token. Throw an error or do nothing if anonymous access is allowed.
-				// throw new E.UnAuthorizedError(E.ERR_NO_TOKEN);
-				return null;
 			}
 		},
 
